@@ -1,2 +1,2 @@
 # cfb_data
-College Football Data
+Data and scripts about college football data.
