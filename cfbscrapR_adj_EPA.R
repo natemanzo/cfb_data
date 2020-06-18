@@ -24,6 +24,7 @@ pbp_2019 <- pbp_2019 %>%
   mutate(defense = recode(defense, "San José State" = "San Jose State"))
 
 ## read in team_id data----------------------------------------
+## team_id is used to determine whether teams are FCS or FBS and contains other useful info
 team_id = read_csv("https://raw.githubusercontent.com/natemanzo/cfb_data/master/_team_id.csv")
 team_id_short = team_id %>% select(Team, TeamID, AbbrESPN)
 
