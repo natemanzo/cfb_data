@@ -1,7 +1,7 @@
 library(cfbscrapR)
 library(tidyverse)
 
-## Play by play data from cfbscrapR ----------------
+## Play by play data from cfbscrapR ---------------------------
 pbp_2019 <- data.frame()
 
 for(i in 1:15){
@@ -24,12 +24,12 @@ pbp_2019 <- pbp_2019 %>%
   mutate(defense = recode(defense, "San José State" = "San Jose State"))
 
 ## read in team_id data----------------------------------------
-## team_id is used to determine whether teams are FCS or FBS and contains other useful info
+## team_id is used to determine whether each team is FCS or FBS
 team_id = read_csv("https://raw.githubusercontent.com/natemanzo/cfb_data/master/_team_id.csv")
 team_id_short = team_id %>% select(Team, TeamID, AbbrESPN)
 
 ## calculate season long raw epa averages ---------------------
-def_epa = pbp_2019 %>%
+def_epa_raw = pbp_2019 %>%
   filter(rush == 1 | pass == 1) %>% 
   group_by(defense) %>%
   summarize(def_epa_raw = mean(EPA)) %>%
@@ -40,7 +40,7 @@ def_epa = pbp_2019 %>%
   mutate(Rank = row_number()) %>%
   mutate(TeamRank = paste0(Team, " #", Rank))
 
-off_epa = pbp_2019 %>%
+off_epa_raw = pbp_2019 %>%
   filter(rush == 1 | pass == 1) %>% 
   group_by(offense) %>%
   summarize(off_epa_raw = mean(EPA)) %>%
@@ -52,11 +52,14 @@ off_epa = pbp_2019 %>%
   mutate(TeamRank = paste0(Team, " #", Rank))
 
 ## Initial EPA adjustments -----------------------------------
-## 1. def_epa_wk_i is calculating the average EPA allowed per defense in week i
+## 1. def_epa_wk_i is calculating the average EPA allowed per defense in week i 
 ## 2. def_epa_wk_else is calculating the average EPA allowed per defense in all weeks EXCEPT week i
-## 3. determine the weekly adjustments for each week i
-## 4. we need to do the adjustments for both offense and defense seperately
-## 5. calculate a single adjustment for all FCS games
+## 3. def_epa_mean_else is calculating the average EPA allowed by ALL defenses in all weeks EXCEPT week i
+## 4. the difference between each team's def_epa_wk_else and def_epa_mean_else is the adjustment factor
+## 5. adjustments_def captures the weekly adjustments for each defense in each week i
+## 6. a single defensive adjustment is calculated for all FCS games
+## 7. raw epa + adjustment factor = adjusted EPA
+## 8. repeat all previous steps for offense
 
 weeks = 1:16
 adjustments_def = data.frame()
@@ -64,20 +67,6 @@ adjustments_off = data.frame()
 for(i in weeks)  {
   
   ## > Def EPA Adjusted-------------------------------
-  
-  def_epa_wk_i = pbp_2019 %>%
-    filter(week == i) %>%
-    filter(rush == 1 | pass == 1) %>% 
-    group_by(defense) %>%
-    summarize(def_epa = mean(EPA)) %>%
-    arrange(desc(def_epa)) %>%
-    rename(Team = defense) %>%
-    left_join(team_id_short, by = "Team") %>%
-    filter(!is.na(TeamID)) %>%
-    mutate(Rank = row_number()) %>%
-    mutate(TeamRank = paste0(Team, " #", Rank)) %>%
-    rename(def_epa_wk_i = def_epa) %>%
-    select(Team, def_epa_wk_i)
   
   def_epa_wk_else = pbp_2019 %>%
     filter(week != i) %>%
@@ -88,35 +77,19 @@ for(i in weeks)  {
     rename(Team = defense) %>%
     left_join(team_id_short, by = "Team") %>%
     filter(!is.na(TeamID)) %>%
-    mutate(Rank = row_number()) %>%
-    mutate(TeamRank = paste0(Team, " #", Rank)) %>%
     rename(def_epa_else = def_epa) %>%
     select(Team, def_epa_else)
   
   def_epa_mean_else = mean(def_epa_wk_else$def_epa_else)
   
   weekly_adjustments_def = def_epa_wk_else %>% 
-    mutate(epa_def_diff = def_epa_mean_else - def_epa_else) %>% 
+    mutate(def_epa_adj_fact = def_epa_mean_else - def_epa_else) %>% 
     mutate(week = i) %>%
-    select(week, defense = Team, epa_def_diff)
+    select(week, defense = Team, def_epa_adj_fact)
   
   adjustments_def = rbind(adjustments_def, weekly_adjustments_def)
   
   ## > Off EPA Adjusted-------------------------------
-  
-  off_epa_wk_i = pbp_2019 %>%
-    filter(week == i) %>%
-    filter(rush == 1 | pass == 1) %>% 
-    group_by(offense) %>%
-    summarize(off_epa = mean(EPA)) %>%
-    arrange(desc(off_epa)) %>%
-    rename(Team = offense) %>%
-    left_join(team_id_short, by = "Team") %>%
-    filter(!is.na(TeamID)) %>%
-    mutate(Rank = row_number()) %>%
-    mutate(TeamRank = paste0(Team, " #", Rank)) %>%
-    rename(off_epa_wk_i = off_epa) %>%
-    select(Team, off_epa_wk_i)
   
   off_epa_wk_else = pbp_2019 %>%
     filter(week != i) %>%
@@ -127,17 +100,15 @@ for(i in weeks)  {
     rename(Team = offense) %>%
     left_join(team_id_short, by = "Team") %>%
     filter(!is.na(TeamID)) %>%
-    mutate(Rank = row_number()) %>%
-    mutate(TeamRank = paste0(Team, " #", Rank)) %>%
     rename(off_epa_else = off_epa) %>%
     select(Team, off_epa_else)
   
   off_epa_mean_else = mean(off_epa_wk_else$off_epa_else)
   
   weekly_adjustments_off = off_epa_wk_else %>% 
-    mutate(epa_off_diff = off_epa_mean_else - off_epa_else) %>% 
+    mutate(off_epa_adj_fact = off_epa_mean_else - off_epa_else) %>% 
     mutate(week = i) %>%
-    select(week, offense = Team, epa_off_diff)
+    select(week, offense = Team, off_epa_adj_fact)
   
   adjustments_off = rbind(adjustments_off, weekly_adjustments_off)
 }
@@ -162,8 +133,8 @@ def_fcs_adj = as.numeric(mean_fbs_def_epa - mean_fcs_def_epa)
 
 pbp_2019 = pbp_2019 %>%
   left_join(adjustments_def, by = c("defense", "week")) %>%
-  mutate(epa_def_diff = replace_na(epa_def_diff, def_fcs_adj)) %>%
-  mutate(epa_def_adj = EPA + epa_def_diff)
+  mutate(def_epa_adj_fact = replace_na(def_epa_adj_fact, def_fcs_adj)) %>%
+  mutate(epa_def_adj = EPA + def_epa_adj_fact)
 
 ## > FCS off adjustments ---------------
 
@@ -185,10 +156,10 @@ off_fcs_adj = as.numeric(mean_fbs_off_epa - mean_fcs_off_epa)
 
 pbp_2019 = pbp_2019 %>%
   left_join(adjustments_off, by = c("offense", "week")) %>%
-  mutate(epa_off_diff = replace_na(epa_off_diff, off_fcs_adj)) %>%
-  mutate(epa_off_adj = EPA + epa_off_diff)
+  mutate(off_epa_adj_fact = replace_na(off_epa_adj_fact, off_fcs_adj)) %>%
+  mutate(epa_off_adj = EPA + off_epa_adj_fact)
 
-## Calculate the top offenses by initial adjustments----------------
+## Calculate the top offenses by initial defensive adjustments----------------
 
 top_offenses = pbp_2019 %>%
   filter(rush == 1 | pass == 1) %>% 
@@ -202,7 +173,7 @@ top_offenses = pbp_2019 %>%
   mutate(Rank = row_number()) %>%
   mutate(TeamRank = paste0(offense, " #", Rank))
 
-## Calculate the top defenses by initial adjustments
+## Calculate the top defenses by initial offensive adjustments
 
 top_defenses = pbp_2019 %>%
   filter(rush == 1 | pass == 1) %>% 
@@ -218,9 +189,8 @@ top_defenses = pbp_2019 %>%
 
 ## Run adjustment process on adjusted EPA metrics over and over until they stop changing----------------
 
-start_time = Sys.time()
-
-iterations = 1:10     #takes about 10 minutes to run 100 iterations
+start_time = Sys.time()   #time the big loop
+iterations = 1:100         #takes about 10 minutes to run 100 iterations
 weeks = 1:16
 
 ## results dataframe captures the adjusted epa for LSU's offense to monitor impact of each adjustment
@@ -229,12 +199,12 @@ results = data.frame(j = NA,offense = NA, mean_epa_adj = NA)
 ## results j = 0 is unadjusted EPA per play
 results[1,"j"] = 0
 results[1,"offense"] = "LSU"
-results[1,"mean_epa_adj"] = 0.401119932
+results[1,"mean_epa_adj"] = off_epa_raw %>% filter(Team == "LSU") %>% select(off_epa_raw) %>% pull()
 
 ## results j = 1 is initial opponent adjusted EPA per play
 results[2,"j"] = 1
 results[2,"offense"] = "LSU"
-results[2,"mean_epa_adj"] = 0.459765338
+results[2,"mean_epa_adj"] = top_offenses %>% filter(offense == "LSU") %>% select(mean_epa_adj) %>% pull()
 
 ## start the loop
 for(j in iterations) {
@@ -244,19 +214,7 @@ for(j in iterations) {
     
   for(i in weeks)  {
     
-    ## > Def EPA Adjusted-------------------------------
-    
-    def_epa_wk_i = pbp_2019 %>%
-      filter(week == i) %>%
-      filter(rush == 1 | pass == 1) %>% 
-      group_by(defense) %>%
-      summarize(def_epa = mean(epa_off_adj)) %>%
-      arrange(desc(def_epa)) %>%
-      rename(Team = defense) %>%
-      left_join(team_id_short, by = "Team") %>%
-      filter(!is.na(TeamID)) %>%
-      rename(def_epa_wk_i = def_epa) %>%
-      select(Team, def_epa_wk_i)
+    ## >> Def EPA Adjustments-------------------------------
     
     def_epa_wk_else = pbp_2019 %>%
       filter(week != i) %>%
@@ -273,25 +231,13 @@ for(j in iterations) {
     def_epa_mean_else = mean(def_epa_wk_else$def_epa_else)
     
     weekly_adjustments_def = def_epa_wk_else %>% 
-      mutate(epa_def_diff = def_epa_mean_else - def_epa_else) %>% 
+      mutate(def_epa_adj_fact = def_epa_mean_else - def_epa_else) %>% 
       mutate(week = i) %>%
-      select(week, defense = Team, epa_def_diff)
+      select(week, defense = Team, def_epa_adj_fact)
     
     adjustments_def = rbind(adjustments_def, weekly_adjustments_def)
     
-    ## > Off EPA Adjusted-------------------------------
-    
-    off_epa_wk_i = pbp_2019 %>%
-      filter(week == i) %>%
-      filter(rush == 1 | pass == 1) %>% 
-      group_by(offense) %>%
-      summarize(off_epa = mean(epa_def_adj)) %>%
-      arrange(desc(off_epa)) %>%
-      rename(Team = offense) %>%
-      left_join(team_id_short, by = "Team") %>%
-      filter(!is.na(TeamID)) %>%
-      rename(off_epa_wk_i = off_epa) %>%
-      select(Team, off_epa_wk_i)
+    ## >> Off EPA Adjustments-------------------------------
     
     off_epa_wk_else = pbp_2019 %>%
       filter(week != i) %>%
@@ -308,15 +254,15 @@ for(j in iterations) {
     off_epa_mean_else = mean(off_epa_wk_else$off_epa_else)
     
     weekly_adjustments_off = off_epa_wk_else %>% 
-      mutate(epa_off_diff = off_epa_mean_else - off_epa_else) %>% 
+      mutate(off_epa_adj_fact = off_epa_mean_else - off_epa_else) %>% 
       mutate(week = i) %>%
-      select(week, offense = Team, epa_off_diff)
+      select(week, offense = Team, off_epa_adj_fact)
     
     adjustments_off = rbind(adjustments_off, weekly_adjustments_off)
     
   }
 
-  ## FCS def adjustments ---------------
+  ## > FCS Def adjustments ---------------
   
   mean_fcs_def_epa = pbp_2019 %>%
     filter(rush == 1 | pass == 1) %>% 
@@ -335,12 +281,12 @@ for(j in iterations) {
   def_fcs_adj = as.numeric(mean_fbs_def_epa - mean_fcs_def_epa)
   
   pbp_2019 = pbp_2019 %>%
-    select(-epa_def_diff, -epa_def_adj) %>%
+    select(-def_epa_adj_fact, -epa_def_adj) %>%
     left_join(adjustments_def, by = c("defense", "week")) %>%
-    mutate(epa_def_diff = replace_na(epa_def_diff, def_fcs_adj)) %>%
-    mutate(epa_def_adj = EPA + epa_def_diff)
+    mutate(def_epa_adj_fact = replace_na(def_epa_adj_fact, def_fcs_adj)) %>%
+    mutate(epa_def_adj = EPA + def_epa_adj_fact)
   
-  ## FCS off adjustments ---------------
+  ## > FCS Off adjustments ---------------
   
   mean_fcs_off_epa = pbp_2019 %>%
     filter(rush == 1 | pass == 1) %>% 
@@ -359,10 +305,10 @@ for(j in iterations) {
   off_fcs_adj = as.numeric(mean_fbs_off_epa - mean_fcs_off_epa)
   
   pbp_2019 = pbp_2019 %>%
-    select(-epa_off_adj, -epa_off_diff) %>%
+    select(-epa_off_adj, -off_epa_adj_fact) %>%
     left_join(adjustments_off, by = c("offense", "week")) %>%
-    mutate(epa_off_diff = replace_na(epa_off_diff, off_fcs_adj)) %>%
-    mutate(epa_off_adj = EPA + epa_off_diff)
+    mutate(off_epa_adj_fact = replace_na(off_epa_adj_fact, off_fcs_adj)) %>%
+    mutate(epa_off_adj = EPA + off_epa_adj_fact)
   
   ## monitor loop progress ##
   print(paste0("j = ",j))
@@ -376,7 +322,7 @@ for(j in iterations) {
   
 }
 
-end_time = Sys.time()
+end_time = Sys.time()   
 total_time = end_time - start_time
 print(total_time)
 
