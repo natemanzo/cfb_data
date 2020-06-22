@@ -17,5 +17,5 @@ pbp_2019 <- readRDS(t)
 ## Uncomment the line below to READ the pbp data from your working directory
 #pbp_2019 = readr::read_rds(path = "pbp_2019_raw_all.rds")
 
-## Use this line if you're not sure what your working directory is
+## Uncomment the line below if you're not sure what your working directory is
 #getwd()
