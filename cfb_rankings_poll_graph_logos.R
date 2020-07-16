@@ -8,6 +8,10 @@ for (i in 1:16) {
   temp_df = cfb_rankings(year = 2019, week = i)
   cfb_rankings = bind_rows(cfb_rankings, temp_df)
 }
+cfb_rankings_final = cfbscrapR::cfb_rankings(year = 2019, season_type = "postseason")
+cfb_rankings_final = cfb_rankings_final %>% mutate(week = 17)
+
+cfb_rankings = cfb_rankings %>% rbind(cfb_rankings_final)
 
 ## Pull cfb_team_info using cfbscrapR
 team_info = as_tibble(cfb_team_info(year = 2019))
