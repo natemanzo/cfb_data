@@ -175,3 +175,129 @@ df %>%
       )
     )
   ) #%>% gtsave("bottom_recruits.png")
+
+## DVOE by College Draft Class ####
+dv_class <- read_csv("https://raw.githubusercontent.com/drmartylawrence/recruitingDraftValue/main/dvClass.csv")
+
+dv_class %>%
+  janitor::clean_names() %>%
+  slice(1:10, 1633:1642) %>%
+  left_join(college_team_logo, by = c("school" = "Team")) %>%
+  select(rk, college_logo, class, draft_value, exp_draft_value, dvoe) %>%
+  gt() %>%
+  espnscrapeR::gt_theme_538() %>%
+  text_transform(
+    locations = cells_body(
+      vars(college_logo)
+    ),
+    fn = function(x) {
+      if_else(is.na(x), " ", 
+              web_image(
+                url = x,
+                height = 25
+              ))
+    }
+  ) %>%
+  tab_header(
+    title = "Top and Bottom Draft Classes by DVOE"
+  ) %>%
+  cols_label(rk = "#",
+             college_logo = "School",
+             draft_value = "Draft Value",
+             exp_draft_value = "Exp Draft Value",
+             dvoe = "DVOE") %>%
+  #fmt_number(columns = vars(ranking), use_seps = TRUE, decimals = 0) %>%
+  cols_align(columns = vars(college_logo), align = "center") %>%
+  data_color(
+    columns = vars(draft_value, exp_draft_value),
+    colors = scales::col_numeric(
+      palette = c("white", "#6EB5FF"),
+      domain = NULL)
+  ) %>%
+  data_color(
+    columns = vars(dvoe),
+    colors = scales::col_numeric(
+      palette = c("red","white", "#6EB5FF"),
+      domain = NULL)
+  ) %>%    
+  tab_source_note(
+    source_note = "Analysis by @drmartylawrence | Table by @cfbNate"
+  ) %>%
+  tab_style(
+    style = list(
+      cell_borders(
+        sides = c("bottom", "top"),
+        weight = NULL
+      )
+    ),
+    locations = list(
+      cells_body(
+        columns = everything(),
+        rows = everything()
+      )
+    )
+  ) %>% gtsave("top_and_bottom_classes_by_dvoe.png")
+
+## DVOE by School ####
+dv_college <- read_csv("https://raw.githubusercontent.com/drmartylawrence/recruitingDraftValue/main/dvCollege.csv")
+
+dv_college %>%
+  janitor::clean_names() %>%
+  slice(1:10, 285:294) %>%
+  left_join(college_team_logo, by = c("school" = "Team")) %>%
+  select(rk = x1, college_logo, draft_value, exp_draft_value, dvoe) %>%
+  gt() %>%
+  espnscrapeR::gt_theme_538() %>%
+  text_transform(
+    locations = cells_body(
+      vars(college_logo)
+    ),
+    fn = function(x) {
+      if_else(is.na(x), " ", 
+              web_image(
+                url = x,
+                height = 25
+              ))
+    }
+  ) %>%
+  tab_header(
+    title = "Top and Bottom Schools by DVOE"
+  ) %>%
+  cols_label(rk = "#",
+             college_logo = "School",
+             draft_value = "Draft Value",
+             exp_draft_value = "Exp Draft Value",
+             dvoe = "DVOE") %>%
+  fmt_number(columns = vars(draft_value, exp_draft_value), use_seps = TRUE, decimals = 1) %>%
+  cols_align(columns = vars(college_logo), align = "center") %>%
+  data_color(
+    columns = vars(draft_value, exp_draft_value),
+    colors = scales::col_numeric(
+      palette = c("white", "#6EB5FF"),
+      domain = NULL)
+  ) %>%
+  data_color(
+    columns = vars(dvoe),
+    colors = scales::col_numeric(
+      palette = c("red","white", "#6EB5FF"),
+      domain = NULL)
+  ) %>%
+  tab_source_note(
+    source_note = "Analysis by @drmartylawrence | Table by @cfbNate"
+  ) %>%
+  tab_style(
+    style = list(
+      cell_borders(
+        sides = c("bottom", "top"),
+        weight = NULL
+      )
+    ),
+    locations = list(
+      cells_body(
+        columns = everything(),
+        rows = everything()
+      )
+    )
+  ) %>% gtsave("top_and_bottom_schools_by_dvoe.png")
+
+  
