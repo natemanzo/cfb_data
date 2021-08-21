@@ -27,7 +27,8 @@ pbp <- cfbfastR::cfbd_pbp_data(year = 2020, team = team_var, epa_wpa = TRUE, wee
 pbp_off <- pbp %>% 
   filter(offense_play == team_var) %>% 
   filter(rush == 1 | pass == 1 | play_type == "Penalty") %>%
-  select(id_play, period, clock.minutes, clock.seconds, yards_to_goal, drive_number, drive_result, 
+  mutate(drive_num = round_half_up(drive_number/2,0)) %>%
+  select(id_play, period, clock.minutes, clock.seconds, yards_to_goal, drive_num, drive_result, 
          down, distance, yards_gained, EPA, play_type, 
          rusher_player_name, passer_player_name, receiver_player_name,play_text)
 
@@ -35,7 +36,8 @@ pbp_off <- pbp %>%
 pbp_def <- pbp %>% 
   filter(defense_play == team_var) %>% 
   filter(rush == 1 | pass == 1 | play_type == "Penalty") %>%
-  select(id_play, period, clock.minutes, clock.seconds, yards_to_goal, drive_number, drive_result, 
+  mutate(drive_num = round_half_up(drive_number/2,0)) %>%
+  select(id_play, period, clock.minutes, clock.seconds, yards_to_goal, drive_num, drive_result, 
          down, distance, yards_gained, EPA, play_type, 
          rusher_player_name, passer_player_name, receiver_player_name,play_text)
 
@@ -49,6 +51,7 @@ pbp_osgood <- pbp %>%
                                   down == 3 & distance >= 5 ~ 1,
                                   down == 4 & distance >= 5 ~ 1,
                                   TRUE ~ 0)) %>%
+  mutate(drive_num = round_half_up(drive_number/2,0)) %>%
   select(week, opponent, period, drive_number, down, distance, yards_to_goal, passing_down, 
          rusher_player_name, passer_player_name, receiver_player_name, play_text,
          yards_gained, first_by_yards, first_by_penalty, turnover, touchdown, 
