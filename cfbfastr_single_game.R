@@ -6,7 +6,7 @@ library(stringr)
 library(readr)
 
 ## Define the team you want to review
-team_var <- "Oklahoma"
+team_var <- "UCLA"
 
 ## Pull the games this team has played to determine the week numbers
 games <- cfbfastR::cfbd_game_info(year = 2020, team = team_var) %>%
@@ -17,7 +17,7 @@ games <- cfbfastR::cfbd_game_info(year = 2020, team = team_var) %>%
 games
 
 ## Define the week number you want to review
-week_num <- 9
+week_num <- 15
 
 ## Pull the play by play data for the team and week you already defined
 pbp <- cfbfastR::cfbd_pbp_data(year = 2020, team = team_var, epa_wpa = TRUE, week = week_num) %>%
@@ -52,7 +52,7 @@ pbp_osgood <- pbp %>%
                                   down == 4 & distance >= 5 ~ 1,
                                   TRUE ~ 0)) %>%
   mutate(drive_num = round_half_up(drive_number/2,0)) %>%
-  select(week, opponent, period, drive_number, down, distance, yards_to_goal, passing_down, 
+  select(week, opponent, period, drive_num, down, distance, yards_to_goal, passing_down, 
          rusher_player_name, passer_player_name, receiver_player_name, play_text,
          yards_gained, first_by_yards, first_by_penalty, turnover, touchdown, 
          success, epa_success, rush, pass, ep_before, ep_after, EPA)  
