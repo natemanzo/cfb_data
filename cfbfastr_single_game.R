@@ -9,7 +9,7 @@ library(readr)
 team_var <- "UCLA"
 
 ## Pull the games this team has played to determine the week numbers
-games <- cfbfastR::cfbd_game_info(year = 2020, team = team_var) %>%
+games <- cfbfastR::cfbd_game_info(year = 2021, team = team_var) %>%
   select(game_id, season, week, season_type, start_date, home_team, away_team, home_points, away_points) %>%
   as_tibble()
 
@@ -17,10 +17,10 @@ games <- cfbfastR::cfbd_game_info(year = 2020, team = team_var) %>%
 games
 
 ## Define the week number you want to review
-week_num <- 15
+week_num <- 1
 
 ## Pull the play by play data for the team and week you already defined
-pbp <- cfbfastR::cfbd_pbp_data(year = 2020, team = team_var, epa_wpa = TRUE, week = week_num) %>%
+pbp <- cfbfastR::cfbd_pbp_data(year = 2021, team = team_var, epa_wpa = TRUE, week = week_num) %>%
   as_tibble()
 
 ## Select only the relevant Offensive plays for padding
@@ -63,15 +63,16 @@ opp_team <- pbp %>%
   select(offense_play) %>% 
   distinct() %>% 
   pull() %>%
-  make_clean_names() 
+  make_clean_names() %>%
+  paste0(collapse = "_")
 
 ## Define 2 digit week for file naming
 week_num_string <- str_pad(week_num, width = 2, side = "left", pad = 0)
 
 ## Write CSV outputs
-write_csv(pbp_off, paste0("wk_",week_num_string,"_",opp_team,"_off.csv"))
-write_csv(pbp_def, paste0("wk_",week_num_string,"_",opp_team,"_def.csv"))
-write_csv(pbp_osgood, paste0("wk_",week_num_string,"_",opp_team,".csv"))
+write_csv(pbp_off, paste0("2021_wk_",week_num_string,"_",opp_team,"_off.csv"))
+write_csv(pbp_def, paste0("2021_wk_",week_num_string,"_",opp_team,"_def.csv"))
+write_csv(pbp_osgood, paste0("2021_wk_",week_num_string,"_",opp_team,".csv"))
 
 ## Check the folder path where your CSVs got saved
 getwd()
